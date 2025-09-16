@@ -1,3 +1,97 @@
+// === Exportar ventas a Excel ===
+function exportSalesToExcel() {
+    if (!sales || sales.length === 0) {
+        alert('No hay ventas para exportar.');
+        return;
+    }
+    const columns = [
+        { key: 'fecha', label: '📅 Fecha', get: s => s.date },
+        { key: 'producto', label: '🍔 Producto', get: s => s.product },
+        { key: 'precio', label: '💰 Precio', get: s => `$${Number(s.price).toFixed(2)}` },
+        { key: 'usuario', label: '🧑‍💼 Vendido por', get: s => s.users?.username || s.user || '—' }
+    ];
+    const headers = columns.map(col => col.label);
+    const data = sales.map(s => columns.map(col => col.get(s)));
+    const wb = XLSX.utils.book_new();
+    const aoa = [headers, ...data];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    columns.forEach((col, idx) => {
+        const cell = XLSX.utils.encode_cell({ r:0, c:idx });
+        if (!ws[cell]) return;
+        ws[cell].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 13 },
+            fill: { fgColor: { rgb: 'F4D03F' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: { top: { style: "thin", color: { rgb: "B7950B" } }, bottom: { style: "thin", color: { rgb: "B7950B" } } }
+        };
+    });
+    for (let r = 1; r < aoa.length; r++) {
+        for (let c = 0; c < columns.length; c++) {
+            const cell = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cell]) continue;
+            ws[cell].s = ws[cell].s || {};
+            ws[cell].s.fill = { fgColor: { rgb: r % 2 === 0 ? 'F9E79F' : 'FFFFFF' } };
+            ws[cell].s.alignment = { horizontal: 'center', vertical: 'center' };
+        }
+    }
+    ws['!cols'] = columns.map(col => {
+        if (col.key === 'producto') return { wpx: 170 };
+        if (col.key === 'usuario') return { wpx: 140 };
+        return { wch: Math.max(12, col.label.length + 4) };
+    });
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r:0, c:0 }, e: { r:aoa.length-1, c:columns.length-1 } }) };
+    XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+    const fileName = `Danny's_Burger_Ventas_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('success', '✅ Ventas exportadas correctamente');
+}
+// === Exportar stock a Excel ===
+function exportStockToExcel() {
+    if (!stock || Object.keys(stock).length === 0) {
+        alert('No hay stock para exportar.');
+        return;
+    }
+    const columns = [
+        { key: 'producto', label: '🥪 Producto', get: (item, name) => name },
+        { key: 'cantidad', label: '🔢 Cantidad', get: (item) => item.quantity },
+        { key: 'unidad', label: '📏 Unidad', get: (item) => item.unit },
+        { key: 'precio', label: '💰 Precio Unit.', get: (item) => item.pricePerUnit !== undefined ? `$${Number(item.pricePerUnit).toFixed(2)}` : '—' },
+        { key: 'total', label: '💵 Total', get: (item) => item.pricePerUnit !== undefined ? `$${(item.pricePerUnit * item.quantity).toFixed(2)}` : '—' }
+    ];
+    const headers = columns.map(col => col.label);
+    const data = Object.entries(stock).map(([name, item]) => columns.map(col => col.get(item, name)));
+    const wb = XLSX.utils.book_new();
+    const aoa = [headers, ...data];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    columns.forEach((col, idx) => {
+        const cell = XLSX.utils.encode_cell({ r:0, c:idx });
+        if (!ws[cell]) return;
+        ws[cell].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 13 },
+            fill: { fgColor: { rgb: 'F4D03F' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: { top: { style: "thin", color: { rgb: "B7950B" } }, bottom: { style: "thin", color: { rgb: "B7950B" } } }
+        };
+    });
+    for (let r = 1; r < aoa.length; r++) {
+        for (let c = 0; c < columns.length; c++) {
+            const cell = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cell]) continue;
+            ws[cell].s = ws[cell].s || {};
+            ws[cell].s.fill = { fgColor: { rgb: r % 2 === 0 ? 'F9E79F' : 'FFFFFF' } };
+            ws[cell].s.alignment = { horizontal: 'center', vertical: 'center' };
+        }
+    }
+    ws['!cols'] = columns.map(col => {
+        if (col.key === 'producto') return { wpx: 170 };
+        return { wch: Math.max(12, col.label.length + 4) };
+    });
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r:0, c:0 }, e: { r:aoa.length-1, c:columns.length-1 } }) };
+    XLSX.utils.book_append_sheet(wb, ws, "Stock");
+    const fileName = `Danny's_Burger_Stock_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('success', '✅ Stock exportado correctamente');
+}
 // Selección rápida de rango de días para exportar
 // Slider para rango de días
 function actualizarLabelFiltroDias() {
@@ -1249,16 +1343,62 @@ function exportMovementsToExcel() {
         alert('No hay movimientos para exportar.');
         return;
     }
-    document.getElementById('excelColumnsModal').style.display = 'flex';
-    // Establecer fechas por defecto
-    setTimeout(() => {
-        if (movements.length > 0) {
-            const primerFecha = movements[0].date.split(' ')[0];
-            const ultimaFecha = movements[movements.length-1].date.split(' ')[0];
-            document.getElementById('fechaInicio').value = primerFecha;
-            document.getElementById('fechaFin').value = ultimaFecha;
+    // Exportar todo el historial automáticamente
+    const columns = [
+        { key: 'fecha', label: '📅 Fecha', get: mov => mov.date },
+        { key: 'tipo', label: '📊 Tipo', get: mov => mov.type },
+        { key: 'producto', label: '🥪 Producto', get: mov => mov.product },
+        { key: 'cantidad', label: '🔢 Cantidad', get: mov => mov.quantity },
+        { key: 'precio', label: '💰 Precio Unit.', get: mov => stock[mov.product]?.pricePerUnit !== undefined ? `$${Number(stock[mov.product].pricePerUnit).toFixed(2)}` : '—' },
+        { key: 'descripcion', label: '📝 Descripción', get: mov => mov.description }
+    ];
+    const headers = columns.map(col => col.label);
+    const data = movements.map(mov => columns.map(col => col.get(mov)));
+    const wb = XLSX.utils.book_new();
+    const styledData = data.map((row, i) => {
+        return row.map((cell, j) => {
+            if (columns[j].key === 'tipo') {
+                if (cell === 'Entrada') return '⬆️ Entrada';
+                if (cell === 'Salida') return '⬇️ Salida';
+            }
+            return cell;
+        });
+    });
+    const aoa = [headers, ...styledData];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    columns.forEach((col, idx) => {
+        const cell = XLSX.utils.encode_cell({ r:0, c:idx });
+        if (!ws[cell]) return;
+        ws[cell].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 13 },
+            fill: { fgColor: { rgb: 'F4D03F' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: { top: { style: "thin", color: { rgb: "B7950B" } }, bottom: { style: "thin", color: { rgb: "B7950B" } } }
+        };
+    });
+    for (let r = 1; r < aoa.length; r++) {
+        for (let c = 0; c < columns.length; c++) {
+            const cell = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cell]) continue;
+            ws[cell].s = ws[cell].s || {};
+            if (r % 2 === 0) {
+                ws[cell].s.fill = { fgColor: { rgb: 'F9E79F' } };
+            } else {
+                ws[cell].s.fill = { fgColor: { rgb: 'FFFFFF' } };
+            }
+            ws[cell].s.alignment = { horizontal: 'center', vertical: 'center' };
         }
-    }, 100);
+    }
+    ws['!cols'] = columns.map(col => {
+        if (col.key === 'fecha') return { wch: 22 };
+        if (col.key === 'producto') return { wpx: 170 };
+        return { wch: Math.max(12, col.label.length + 4) };
+    });
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r:0, c:0 }, e: { r:aoa.length-1, c:columns.length-1 } }) };
+    XLSX.utils.book_append_sheet(wb, ws, "Movimientos");
+    const fileName = `Danny's_Burger_Movimientos_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('success', '✅ Historial de movimientos exportado correctamente');
 }
 
 function closeExcelColumnsModal() {

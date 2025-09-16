@@ -7,7 +7,7 @@ function exportSalesToExcel() {
     const columns = [
         { key: 'fecha', label: '📅 Fecha', get: s => s.date },
         { key: 'producto', label: '🍔 Producto', get: s => s.product },
-        { key: 'precio', label: '💰 Precio', get: s => `$${Number(s.price).toFixed(2)}` },
+        { key: 'precio', label: '💰 Precio', get: s => Number(s.price).toFixed(2) },
         { key: 'usuario', label: '🧑‍💼 Vendido por', get: s => s.users?.username || s.user || '—' }
     ];
     const headers = columns.map(col => col.label);
@@ -1688,4 +1688,5 @@ function createParticles() {
         document.querySelectorAll('#particles .particle').forEach(p => p.remove());
         for (let i = 0; i < count; i++) setTimeout(create, i * 500);
     }, 30000);
+
 }

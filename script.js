@@ -7,7 +7,7 @@ function exportSalesToExcel() {
     const columns = [
         { key: 'fecha', label: '📅 Fecha', get: s => s.date },
         { key: 'producto', label: '🍔 Producto', get: s => s.product },
-        { key: 'precio', label: '💰 Precio', get: s => Number(s.price).toFixed(2) },
+        { key: 'precio', label: '💰 Precio', get: s => s.price },
         { key: 'usuario', label: '🧑‍💼 Vendido por', get: s => s.users?.username || s.user || '—' }
     ];
     const headers = columns.map(col => col.label);
@@ -1690,3 +1690,4 @@ function createParticles() {
     }, 30000);
 
 }
+
